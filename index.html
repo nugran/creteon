@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creteon - Platform Tanya Jawab</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px;
+            text-align: center;
+        }
+
+        main {
+            padding: 20px;
+        }
+
+        #auth-form, #question-form {
+            margin-bottom: 20px;
+            display: none; /* Sembunyikan form sampai login */
+        }
+
+        #question-input, #answer-input {
+            width: 70%;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        #submit-question, #submit-answer {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        .question-item {
+            background-color: white;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .answer-item {
+            background-color: #f1f1f1;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 5px 0;
+        }
+
+        footer {
+            text-align: center;
+            padding: 15px;
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .login-message {
+            margin-top: 10px;
+            color: #555;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Creteon</h1>
+    </header>
+    <main>
+        <div id="auth-form">
+            <h2>Login</h2>
+            <input type="text" id="username" placeholder="Nama Pengguna" />
+            <input type="password" id="password" placeholder="Kata Sandi" />
+            <button id="login-button">Login</button>
+            <button id="register-button">Daftar</button>
+            <p id="auth-message"></p>
+            <p class="login-message">Harap ingat nama dan password akun anda.</p>
+        </div>
+
+        <div id="question-form">
+            <h2>Tanyakan Sesuatu</h2>
+            <input type="text" id="question-input" placeholder="Apa yang ingin Anda tanyakan?" />
+            <button id="submit-question">Tanya</button>
+        </div>
+
+        <section id="questions-list">
+            <h2>Pertanyaan Terbaru</h2>
+            <div id="questions-container"></div>
+        </section>
+    </main>
+    <footer>
+        <p>© 2024 Creteon. Semua hak dilindungi.</p>
+    </footer>
+    <script>
+        const authForm = document.getElementById('auth-form');
+        const questionForm = document.getElementById('question-form');
+        const questionsContainer = document.getElementById('questions-container');
+        const authMessage = document.getElementById('auth-message');
+        let currentUser = null;
+
+        // Cek penyimpanan lokal untuk pengguna
+        if (localStorage.getItem('users')) {
+            authForm.style.display = 'block';
+        } else {
+            localStorage.setItem('users', JSON.stringify([]));
+            authForm.style.display = 'block';
+        }
+
+        // Fungsi untuk login
+        document.getElementById('login-button').addEventListener('click', function() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            const users = JSON.parse(localStorage.getItem('users'));
+            const user = users.find(u => u.username === username && u.password === password);
+
+            if (user) {
+                currentUser = username;
+                authForm.style.display = 'none';
+                questionForm.style.display = 'block';
+                loadQuestions();
+            } else {
+                authMessage.textContent = 'Nama pengguna atau kata sandi salah.';
+            }
+        });
+
+        // Fungsi untuk mendaftar
+        document.getElementById('register-button').addEventListener('click', function() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            const users = JSON.parse(localStorage.getItem('users'));
+            if (users.find(u => u.username === username)) {
+                authMessage.textContent = 'Nama pengguna sudah ada.';
+            } else {
+                users.push({ username, password });
+                localStorage.setItem('users', JSON.stringify(users));
+                authMessage.textContent = 'Pendaftaran berhasil, silakan login.';
+            }
+        });
+
+        // Fungsi untuk mengirim pertanyaan
+        document.getElementById('submit-question').addEventListener('click', function() {
+            const questionInput = document.getElementById('question-input');
+            const questionText = questionInput.value;
+
+            if (questionText && currentUser) {
+                const questions = JSON.parse(localStorage.getItem('questions')) || [];
+                const newQuestion = {
+                    id: Date.now(),
+                    text: questionText,
+                    username: currentUser,
+                    answers: []
+                };
+                questions.push(newQuestion);
+                localStorage.setItem('questions', JSON.stringify(questions));
+                questionInput.value = ''; // Clear the input field
+                loadQuestions();
+            } else {
+                alert('Silakan masukkan pertanyaan.');
+            }
+        });
+
+        // Fungsi untuk memuat pertanyaan
+        function loadQuestions() {
+            const questions = JSON.parse(localStorage.getItem('questions')) || [];
+            questionsContainer.innerHTML = '';
+
+            questions.forEach(question => {
+                const questionItem = document.createElement('div');
+                questionItem.className = 'question-item';
+                questionItem.innerHTML = `<strong>${question.username}:</strong> ${question.text} <button onclick="toggleAnswerForm(${question.id})">Balas</button>`;
+                
+                const answerInput = document.createElement('input');
+                answerInput.type = 'text';
+                answerInput.placeholder = 'Jawaban Anda...';
+                answerInput.id = `answer-input-${question.id}`;
+                const submitAnswerButton = document.createElement('button');
+                submitAnswerButton.textContent = 'Kirim';
+                submitAnswerButton.onclick = function() {
+                    submitAnswer(question.id);
+                };
+
+                const answersContainer = document.createElement('div');
+                answersContainer.className = 'answers-container';
+                question.answers.forEach(answer => {
+                    const answerItem = document.createElement('div');
+                    answerItem.className = 'answer-item';
+                    answerItem.innerHTML = `<strong>${answer.username}:</strong> ${answer.text}`;
+                    answersContainer.appendChild(answerItem);
+                });
+
+                questionItem.appendChild(answerInput);
+                questionItem.appendChild(submitAnswerButton);
+                questionItem.appendChild(answersContainer);
+                questionsContainer.appendChild(questionItem);
+            });
+        }
+
+        // Fungsi untuk mengirim jawaban
+        function submitAnswer(questionId) {
+            const answerInput = document.getElementById(`answer-input-${questionId}`);
+            const answerText = answerInput.value;
+
+            if (answerText && currentUser) {
+                const questions = JSON.parse(localStorage.getItem('questions'));
+                const question = questions.find(q => q.id === questionId);
+
+                question.answers.push({ username: currentUser, text: answerText });
+                localStorage.setItem('questions', JSON.stringify(questions));
+                answerInput.value = ''; // Clear the input field
+                loadQuestions();
+            } else {
+                alert('Silakan masukkan jawaban.');
+            }
+        }
+
+        // Fungsi untuk menampilkan atau menyembunyikan form balasan
+        function toggleAnswerForm(questionId) {
+            const answerInput = document.getElementById(`answer-input-${questionId}`);
+            answerInput.style.display = answerInput.style.display === 'none' ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>
